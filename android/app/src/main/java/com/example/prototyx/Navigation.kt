@@ -1,15 +1,30 @@
 package com.example.prototyx
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
@@ -22,6 +37,8 @@ import com.example.prototyx.data.DataRepository
 import com.example.prototyx.data.DefaultDataRepository
 import com.example.prototyx.data.MockDataRepository
 import com.example.prototyx.ui.screens.*
+import com.example.prototyx.ui.voice.VoiceAssistantManager
+import com.example.prototyx.ui.voice.VoiceCoPilotSheet
 
 sealed class BottomBarTab(val route: NavKey, val icon: ImageVector, val title: String) {
     object Dashboard : BottomBarTab(Main, Icons.Outlined.Home, "Terminal")
@@ -36,6 +53,17 @@ fun MainNavigation(
     repository: DataRepository,
     authManager: com.example.prototyx.data.security.AuthManager
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val voiceManager = remember { VoiceAssistantManager(context, coroutineScope) }
+    var showVoiceSheet by remember { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            voiceManager.destroy()
+        }
+    }
+
     val startDestination = if (authManager.getToken() != null) Main else Login
     val backStack = rememberNavBackStack(startDestination)
     
@@ -47,9 +75,39 @@ fun MainNavigation(
         BottomBarTab.Transcripts
     )
 
+    val currentScreen = backStack.lastOrNull() ?: Main
+
     Scaffold(
+        floatingActionButton = {
+            if (currentScreen::class != Login::class) {
+                FloatingActionButton(
+                    onClick = { showVoiceSheet = true },
+                    containerColor = Color(0xFF111111),
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(Color(0xFF4CAF50), CircleShape)
+                        )
+                        Text(
+                            text = "JARVIS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+            }
+        },
         bottomBar = {
-            val currentScreen = backStack.lastOrNull() ?: Main
             if (currentScreen::class != Login::class) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -89,6 +147,14 @@ fun MainNavigation(
             }
         }
     ) { innerPadding ->
+        if (showVoiceSheet) {
+            VoiceCoPilotSheet(
+                voiceManager = voiceManager,
+                repository = repository,
+                onDismiss = { showVoiceSheet = false }
+            )
+        }
+
         NavDisplay(
             backStack = backStack,
             onBack = { backStack.removeLastOrNull() },
