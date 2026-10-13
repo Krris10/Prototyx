@@ -10,6 +10,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Refresh
@@ -24,6 +29,20 @@ import com.example.prototyx.data.MockDataRepository
 import com.example.prototyx.data.model.MarketIndicatorsResponse
 import com.example.prototyx.theme.PrototyxTheme
 import com.example.prototyx.ui.components.*
+
+data class PresetBasket(
+    val title: String,
+    val icon: String,
+    val subtitle: String,
+    val holdings: Map<String, Float>
+)
+
+data class PortfolioHealthReport(
+    val score: Int,
+    val status: String,
+    val statusColor: Color,
+    val diagnosis: String
+)
 
 @Composable
 fun DashboardScreen(
@@ -70,6 +89,52 @@ fun DashboardScreen(
     LaunchedEffect(holdings) {
         if (selectedTicker.isEmpty() && holdings.isNotEmpty()) {
             selectedTicker = holdings.keys.first()
+        }
+    }
+
+    val demoBaskets = remember {
+        listOf(
+            PresetBasket("Tech Titans", "🚀", "Growth Conviction", mapOf("NVDA" to 0.35f, "AAPL" to 0.35f, "MSFT" to 0.30f)),
+            PresetBasket("Balanced Core", "⚖️", "Indian Bluechips", mapOf("RELIANCE" to 0.40f, "TCS" to 0.30f, "HDFCBANK" to 0.30f)),
+            PresetBasket("Defensive Yield", "🛡️", "Low Volatility", mapOf("ITC" to 0.40f, "HINDUNILVR" to 0.35f, "TCS" to 0.25f))
+        )
+    }
+
+    val healthReport = remember(holdings) {
+        if (holdings.isEmpty()) {
+            PortfolioHealthReport(0, "EMPTY PORTFOLIO", Color.Gray, "Select a 1-tap demo preset or discover assets below to generate a health audit.")
+        } else {
+            val totalAssets = holdings.size
+            val totalWeight = holdings.values.sum()
+            val maxWeight = if (totalWeight > 0) (holdings.values.maxOrNull() ?: 0f) / totalWeight else 1f
+            
+            var score = 50
+            if (totalAssets >= 3) score += 25
+            else if (totalAssets == 2) score += 12
+            
+            if (maxWeight < 0.45f) score += 20
+            else if (maxWeight > 0.60f) score -= 25
+
+            score = score.coerceIn(25, 96)
+
+            val (status, color, diagnosis) = when {
+                score >= 80 -> Triple(
+                    "ROBUST ALLOCATION",
+                    Color(0xFF2E7D32),
+                    "Portfolio is resilient across $totalAssets holdings. No single stock exceeds 45% capital allocation."
+                )
+                score >= 60 -> Triple(
+                    "MODERATE CONCENTRATION",
+                    Color(0xFFF57C00),
+                    "Top holding represents ${(maxWeight * 100).toInt()}% of portfolio. Rebalance recommended to limit sector drawdown."
+                )
+                else -> Triple(
+                    "HIGH VULNERABILITY",
+                    Color(0xFFD32F2F),
+                    "Elevated single-asset concentration (${(maxWeight * 100).toInt()}%). Add defensive counterweights or hedge exposure."
+                )
+            }
+            PortfolioHealthReport(score, status, color, diagnosis)
         }
     }
 
@@ -155,6 +220,43 @@ fun DashboardScreen(
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }
+        }
+
+        // 1-Tap Quick-Test Preset Baskets (Examiner Zero Friction)
+        item(key = "presets_row") {
+            Column {
+                MetadataLabel(text = "1-Tap Quick-Test Portfolios", color = Color(0xFF1F6C9F))
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    demoBaskets.forEach { basket ->
+                        PresetBasketChip(
+                            basket = basket,
+                            onClick = {
+                                coroutineScope.launch {
+                                    // Remove old holdings and load preset
+                                    holdings.keys.forEach { oldTicker ->
+                                        repository.removeHolding(oldTicker)
+                                    }
+                                    basket.holdings.forEach { (ticker, weight) ->
+                                        repository.updateHolding(ticker, weight)
+                                    }
+                                    selectedTicker = basket.holdings.keys.first()
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Portfolio Health & Stress Scorecard
+        item(key = "health_scorecard") {
+            PortfolioHealthCard(report = healthReport)
         }
 
         // Search & Discovery (Universal Input)
@@ -378,6 +480,118 @@ fun LegendItem(label: String, color: Color) {
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+fun PresetBasketChip(
+    basket: PresetBasket,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .clickable { onClick() }
+            .border(1.dp, Color.Black.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = basket.icon, fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = basket.title,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = basket.subtitle,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PortfolioHealthCard(report: PortfolioHealthReport) {
+    DoubleBezelCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            EditorialHeading(text = "Portfolio Health Meter")
+            Surface(
+                color = report.statusColor.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(
+                    text = report.status,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp,
+                    color = report.statusColor
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = "${report.score}",
+                        fontSize = 38.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = " / 100",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                MetadataLabel(text = "STRESS & RESILIENCE SCORE")
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .background(report.statusColor.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(report.statusColor, CircleShape)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = Color.Black.copy(alpha = 0.05f))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = report.diagnosis,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = 18.sp
+        )
     }
 }
 
