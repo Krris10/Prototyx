@@ -41,7 +41,7 @@ class VoiceAssistantManager(
     var targetAsset by mutableStateOf<String?>(null)
         private set
 
-    var statusMessage by mutableStateOf("JARVIS Co-Pilot ready. Tap microphone to speak.")
+    var statusMessage by mutableStateOf("FINNY Co-Pilot ready. Tap microphone to speak.")
         private set
 
     private var speechRecognizer: SpeechRecognizer? = null
@@ -145,7 +145,7 @@ class VoiceAssistantManager(
             .replace(Regex("\\s+"), " ")
             .trim()
 
-        tts?.speak(cleanSpeech, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_TTS_UTTERANCE")
+        tts?.speak(cleanSpeech, TextToSpeech.QUEUE_FLUSH, null, "FINNY_TTS_UTTERANCE")
     }
 
     fun stopSpeaking() {
@@ -161,7 +161,7 @@ class VoiceAssistantManager(
         recognizedText = ""
         responseText = null
         targetAsset = null
-        statusMessage = "JARVIS Co-Pilot ready. Tap microphone to speak."
+        statusMessage = "FINNY Co-Pilot ready. Tap microphone to speak."
     }
 
     fun destroy() {

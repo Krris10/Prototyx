@@ -89,7 +89,7 @@ fun VoiceCoPilotSheet(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "JARVIS VOICE CO-PILOT",
+                            text = "FINNY VOICE CO-PILOT",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
