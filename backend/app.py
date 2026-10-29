@@ -1,9 +1,17 @@
 import uvicorn
+<<<<<<< HEAD
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
 from typing import List, Dict, Optional
+=======
+from fastapi import FastAPI, HTTPException, Depends, status, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
+from sqlmodel import Session, select
+from typing import List, Dict, Optional, Any
+>>>>>>> upstream/main
 import os
 
 from database import init_db, get_session
@@ -60,10 +68,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session: Session
 
 @app.post("/api/auth/register", response_model=AuthResponse)
 def register(request: RegisterRequest, session: Session = Depends(get_session)):
+<<<<<<< HEAD
     # Strip whitespace from email to avoid login issues
     email = request.email.strip().lower()
     
     # Check if user exists
+=======
+    email = request.email.strip().lower()
+>>>>>>> upstream/main
     existing_user = session.exec(select(User).where(User.email == email)).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -98,10 +110,13 @@ def sync_holdings(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
+<<<<<<< HEAD
     # This is a merge-sync logic:
     # 1. Update/Insert local holdings sent by client
     # 2. Return all holdings for this user as truth
     
+=======
+>>>>>>> upstream/main
     for ticker, weight in request.holdings.items():
         existing_holding = session.exec(
             select(Holding).where(Holding.user_id == current_user.id, Holding.ticker == ticker)
@@ -118,6 +133,7 @@ def sync_holdings(
                 session.add(new_holding)
     
     session.commit()
+<<<<<<< HEAD
     
     # Refresh to get all
     all_holdings = session.exec(select(Holding).where(Holding.user_id == current_user.id)).all()
@@ -133,6 +149,47 @@ def get_indicators_local(ticker: str):
 def get_indicators(ticker: str):
     try:
         return get_indicators_local(ticker)
+=======
+    all_holdings = session.exec(select(Holding).where(Holding.user_id == current_user.id)).all()
+    return {h.ticker: h.weight for h in all_holdings}
+
+# --- Market & Live Intelligence ---
+
+@app.get("/api/tickers/search")
+def search_tickers(query: Optional[str] = None, sector: Optional[str] = None):
+    from data.screener_service import search_tickers_catalog
+    return search_tickers_catalog(query, sector)
+
+@app.get("/api/market/indicators/{ticker}")
+def get_indicators(ticker: str):
+    from data.market_data import get_latest_metrics
+    try:
+        return get_latest_metrics(ticker)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/market/chart/{ticker}")
+def get_stock_chart(ticker: str, period: str = "1M"):
+    from data.market_data import get_stock_chart as fetch_chart
+    try:
+        return fetch_chart(ticker, period)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/news/sentiment")
+def get_news_sentiment(ticker: Optional[str] = None):
+    from data.news_service import fetch_live_news_sentiment
+    try:
+        return fetch_live_news_sentiment(ticker)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/screener/search")
+def search_screener(query: Optional[str] = None, riskLevel: Optional[str] = None):
+    from data.screener_service import search_screener_items
+    try:
+        return search_screener_items(query, riskLevel)
+>>>>>>> upstream/main
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -144,6 +201,11 @@ def get_transcript(ticker: str, year: int = 2026, quarter: int = 3):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+<<<<<<< HEAD
+=======
+# --- Quantitative & Risk Engines ---
+
+>>>>>>> upstream/main
 @app.post("/api/quant/risk-mesh")
 def get_risk_mesh(request: RiskMeshRequest):
     from quant.risk_mesh import calculate_exposure_mesh
@@ -160,6 +222,30 @@ def get_optimization(request: OptimizeRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+<<<<<<< HEAD
+=======
+@app.post("/api/quant/stress-test")
+def run_stress_test(request: Dict[str, Any]):
+    from data.screener_service import calculate_macro_stress_test
+    try:
+        tickers = request.get("tickers", [])
+        weights = request.get("weights", [])
+        scenario = request.get("scenarioId", "rate_hike")
+        return calculate_macro_stress_test(tickers, weights, scenario)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/finny/strategy-report")
+def get_finny_report():
+    from data.screener_service import get_finny_strategy_report
+    try:
+        return get_finny_strategy_report()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- AI Agents & Committee ---
+
+>>>>>>> upstream/main
 @app.post("/api/agents/debate")
 def run_debate(request: TickerListRequest):
     from agents.committee import run_committee_debate
@@ -178,7 +264,11 @@ async def run_consult(request: ConsultRequest):
 
 @app.get("/")
 def read_root():
+<<<<<<< HEAD
     return {"status": "online", "secured": True}
+=======
+    return {"status": "online", "secured": True, "version": "2.1.0"}
+>>>>>>> upstream/main
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
