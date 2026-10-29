@@ -10,6 +10,8 @@ val TextMuted = Color(0xFF787774)
 val BorderLight = Color(0xFFEAEAEA)
 
 // Spot Pastels for Semantic Accents
+val Hairline = Color(0xFFE0E0E0)
+val Mint = Color(0xFF4CAF50)
 val PaleRed = Color(0xFFFDEBEC)
 val PaleRedText = Color(0xFF9F2F2D)
 val PaleBlue = Color(0xFFE1F3FE)

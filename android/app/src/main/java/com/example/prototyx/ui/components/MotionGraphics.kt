@@ -39,11 +39,21 @@ fun MarketAtmosphere(
         val rows = 3
         repeat(columns + 1) { i ->
             val x = size.width * i / columns
-            drawLine(Hairline.copy(alpha = .34f), Offset(x, 0f), Offset(x, size.height), 1f)
+            drawLine(
+                color = Hairline.copy(alpha = .34f),
+                start = Offset(x, 0f),
+                end = Offset(x, size.height),
+                strokeWidth = 1f
+            )
         }
         repeat(rows + 1) { i ->
             val y = size.height * i / rows
-            drawLine(Hairline.copy(alpha = .28f), Offset(0f, y), Offset(size.width, y), 1f)
+            drawLine(
+                color = Hairline.copy(alpha = .28f),
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1f
+            )
         }
 
         val path = Path()
