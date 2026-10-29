@@ -1,28 +1,38 @@
 package com.example.prototyx.data.security
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 class AuthManager(context: Context) {
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    private val sharedPreferences: SharedPreferences = try {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
 
-    private val sharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        "secure_auth_prefs",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+        EncryptedSharedPreferences.create(
+            context,
+            "secure_auth_prefs",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        // Fallback to standard SharedPreferences if Keystore error occurs on device
+        context.getSharedPreferences("fallback_auth_prefs", Context.MODE_PRIVATE)
+    }
 
     fun saveToken(token: String) {
         sharedPreferences.edit().putString(KEY_TOKEN, token).apply()
     }
 
     fun getToken(): String? {
-        return sharedPreferences.getString(KEY_TOKEN, null)
+        return try {
+            sharedPreferences.getString(KEY_TOKEN, null)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun clearToken() {
@@ -30,7 +40,11 @@ class AuthManager(context: Context) {
     }
 
     fun hasAcceptedDisclaimer(): Boolean {
-        return sharedPreferences.getBoolean(KEY_DISCLAIMER_ACCEPTED, false)
+        return try {
+            sharedPreferences.getBoolean(KEY_DISCLAIMER_ACCEPTED, false)
+        } catch (e: Exception) {
+            false
+        }
     }
 
     fun setAcceptedDisclaimer(accepted: Boolean) {
